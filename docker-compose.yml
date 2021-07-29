@@ -1,0 +1,40 @@
+version: "3.9"
+# orchestration for the dockers
+# 
+services:
+  # app holds the process that will get and insert swapi data to the database
+  app:
+    # the building process is inside the /app/Dockerfile
+    build: ./app/
+    # we have to wait for the db to be up in order to start the process
+    depends_on: 
+        db: 
+            condition: service_healthy
+  # django is the api that lets the users to query the db. as shown bellow please goto 0.0.0.0:5000 in order to query the db 
+  django:
+    # builds the docker
+    build: "./django/crm_project/"
+    depends_on: 
+      - app
+    ports:
+      - 5000:5000
+    # start the server
+    command: python manage.py runserver 0.0.0.0:5000
+
+  # db is the postgesql database 
+  db:
+    # builds the docker
+    build: "./db/"
+    ports: 
+      - "5432:5432"
+    # the process to check if our db is up in order to start the app
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U username -d db"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+volumes: 
+  postgres_data:
+  
